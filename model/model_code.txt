@@ -1,0 +1,77 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+import joblib
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+df = pd.read_excel('/content/drive/My Drive/hogwarts_house_assignments.xlsx')
+df.columns = df.columns.str.strip()
+print("Column names in the dataset:")
+print(list(df.columns))
+
+
+# Drop unnecessary columns
+df.drop(columns=['Timestamp', 'Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'], inplace=True)
+
+# Separate features and target
+X = df.drop(columns=['Top House'])
+y = df['Top House']
+
+# List of Likert scale questions (answers from 1 to 5)
+likert_cols = ['I am willing to take risks even when the outcome is uncertain (1- strongly disagree, 5- strongly agree)', 'I always put the needs of my friends and family before my own (1- strongly disagree, 5- strongly agree)', 'I would rather be feared than ignored  (1- strongly disagree, 5- strongly agree)', 'I enjoy being the leader in a group (1- strongly disagree, 5- strongly agree)', 'During an argument, I rely on facts and logic rather than emotions (1- strongly disagree, 5- strongly agree)', 'I believe that patience and perseverance always lead to success (1- strongly disagree, 5- strongly agree)','If my friend is being bullied, I would immediately stand up for them, no matter what (1- strongly disagree, 5- strongly agree)','I adapt quickly to new situations and use them to my advantage (1- strongly disagree, 5- strongly agree)','I enjoy solving puzzles and figuring out how things work (1- strongly disagree, 5- strongly agree)']  # ← Use your actual column names
+
+# Get the auto-detected text columns
+text_cols = [col for col in X.columns if X[col].dtype == object]
+
+# Combine both
+categorical_cols = text_cols + likert_cols
+
+label_encoders = {}
+for col in categorical_cols:
+    le = LabelEncoder()
+    X[col] = le.fit_transform(X[col].astype(str))  # Convert everything to string just in case
+    label_encoders[col] = le
+
+
+
+# Encode target
+target_encoder = LabelEncoder()
+y = target_encoder.fit_transform(y)
+
+# Train/Test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+#model = RandomForestClassifier(random_state=42)
+model = RandomForestClassifier(random_state=42, class_weight='balanced')
+
+model.fit(X_train, y_train)
+
+# Save model & encoders
+joblib.dump(model, "sorting_hat_model.pkl")
+joblib.dump(label_encoders, "feature_encoders.pkl")
+joblib.dump(target_encoder, "target_encoder.pkl")
+
+print("Model trained and saved!")
+
+from google.colab import files
+files.download("sorting_hat_model.pkl")
+files.download("feature_encoders.pkl")
+files.download("target_encoder.pkl")
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+cm = confusion_matrix(y_test_labels, y_pred_labels, labels=target_encoder.classes_)
+
+plt.figure(figsize=(8,6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=target_encoder.classes_, yticklabels=target_encoder.classes_)
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+

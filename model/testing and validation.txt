@@ -1,0 +1,34 @@
+import pandas as pd
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+
+# Clean column names
+df.columns = df.columns.str.strip()
+
+# Separate features and target
+X = df.drop(columns=['Top House'])
+y = df['Top House']
+
+# Label encode categorical and Likert features
+label_encoders = {}
+for col in X.columns:
+    if X[col].dtype == object:
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col].astype(str))
+        label_encoders[col] = le
+
+# Encode target
+target_encoder = LabelEncoder()
+y = target_encoder.fit_transform(y)
+
+# Initialize model
+model = RandomForestClassifier(random_state=42, class_weight='balanced')
+
+# Perform 5-fold cross-validation
+scores = cross_val_score(model, X, y, cv=5)
+
+# Output results
+print("Cross-validation scores (accuracy for each fold):", scores)
+print("Average accuracy across all folds:", scores.mean())
+
